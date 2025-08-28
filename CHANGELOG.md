@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial release of Orchard Care integration
-- Support for 14+ fruit trees and berries (including Fig and Avocado)
+- Support for 17+ fruit trees and berries (including Fig, Avocado, Apricot, Kiwi, and Persimmon)
 - Hemisphere-aware seasonal scheduling
 - Organic/conventional treatment options
 - Modern dashboard card with plant selection
@@ -21,3 +21,9 @@ All notable changes to this project will be documented in this file.
 - ✅ Custom plant addition
 - ✅ Beautiful modern UI card
 - ✅ HACS compatible installation
+
+### Plants Supported
+- Stone fruits: Apple, Pear, Cherry, Plum, Peach, Apricot
+- Citrus: Orange, Lemon
+- Berries: Blueberry, Raspberry, Blackberry, Strawberry
+- Specialty: Grape, Fig, Avocado, Kiwi, Persimmon

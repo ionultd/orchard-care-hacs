@@ -136,11 +136,23 @@ class OrchardCareCard extends HTMLElement {
 
     getPlantIcon(plantType) {
         const plantIcons = {
-            'Apple Tree': '🍎', 'Pear Tree': '🍐', 'Cherry Tree': '🍒',
-            'Plum Tree': '🍇', 'Peach Tree': '🍑', 'Orange Tree': '🍊',
-            'Lemon Tree': '🍋', 'Grapevine': '🍇', 'Blueberry Bush': '🫐',
-            'Raspberry Cane': '🍇', 'Blackberry Cane': '🍇', 'Strawberry Plant': '🍓',
-            'Fig Tree': '🫒', 'Avocado Tree': '🥑'
+            'Apple Tree': '🍎',
+            'Pear Tree': '🍐',
+            'Cherry Tree': '🍒',
+            'Plum Tree': '🍇',
+            'Peach Tree': '🍑',
+            'Apricot Tree': '🍑',
+            'Orange Tree': '🍊',
+            'Lemon Tree': '🍋',
+            'Grapevine': '🍇',
+            'Blueberry Bush': '🫐',
+            'Raspberry Cane': '🍇',
+            'Blackberry Cane': '🍇',
+            'Strawberry Plant': '🍓',
+            'Fig Tree': '🫒',
+            'Avocado Tree': '🥑',
+            'Kiwi Vine': '🥝',
+            'Persimmon Tree': '🍅'
         };
         return plantIcons[plantType] || '🌱';
     }

@@ -10,6 +10,13 @@
    - Organic preference
    - Select plants
 
+```yaml
+# These are automatically handled by the integration
+hemisphere: northern  # or southern
+organic_preference: true
+reminder_days: [7, 3, 1, 0]  # When to send reminders
+```
+
 ## Card Configuration
 
 ```yaml

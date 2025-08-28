@@ -155,6 +155,16 @@ PLANT_CARE_DATA = {
         },
         "care_notes": "Heavy pruning needed. Susceptible to peach leaf curl."
     },
+    "apricot": {
+        "name": "Apricot Tree",
+        "pruning_months": [12, 1, 2],  # Winter pruning during dormancy
+        "spray_months": [3, 4, 5, 6],  # Spring and early summer
+        "spray_products": {
+            "organic": ["Copper fungicide", "Neem oil", "Sulfur spray", "Horticultural oil", "Bacillus subtilis"],
+            "conventional": ["Captan", "Imidacloprid", "Propiconazole", "Malathion", "Fungicide spray"]
+        },
+        "care_notes": "Prune during dormancy to maintain shape and airflow. Susceptible to brown rot and bacterial canker. Thin fruit for better quality."
+    },
     "citrus_orange": {
         "name": "Orange Tree",
         "pruning_months": [3, 4, 5],  # Late winter/early spring
@@ -244,5 +254,25 @@ PLANT_CARE_DATA = {
             "conventional": ["Imidacloprid", "Abamectin", "Copper sulfate", "Systemic insecticide", "Fungicide spray"]
         },
         "care_notes": "Light pruning only - remove dead branches and suckers. Sensitive to over-pruning. Watch for thrips, mites, and root rot."
+    },
+    "kiwi": {
+        "name": "Kiwi Vine",
+        "pruning_months": [6, 7, 8],  # Winter pruning (dormant season)
+        "spray_months": [9, 10, 11, 3, 4],  # Spring and early summer
+        "spray_products": {
+            "organic": ["Copper fungicide", "Neem oil", "Horticultural oil", "Bacillus thuringiensis", "Spinosad"],
+            "conventional": ["Captan", "Imidacloprid", "Mancozeb", "Systemic insecticide", "Fungicide spray"]
+        },
+        "care_notes": "Heavy winter pruning required. Train on strong trellis system. Separate male and female plants needed. Watch for scale insects and bacterial canker."
+    },
+    "persimmon": {
+        "name": "Persimmon Tree",
+        "pruning_months": [12, 1, 2],  # Winter pruning during dormancy
+        "spray_months": [3, 4, 5, 8, 9],  # Spring and late summer
+        "spray_products": {
+            "organic": ["Neem oil", "Copper fungicide", "Horticultural oil", "Bacillus subtilis", "Kaolin clay"],
+            "conventional": ["Captan", "Imidacloprid", "Propiconazole", "Malathion", "Fungicide spray"]
+        },
+        "care_notes": "Minimal pruning needed - persimmons fruit on new wood. Remove water sprouts and dead branches. Watch for persimmon psylla and scale insects."
     }
 }

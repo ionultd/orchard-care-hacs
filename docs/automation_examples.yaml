@@ -1,0 +1,297 @@
+# automation.yaml - Add these automations for enhanced orchard care reminders
+
+# Basic notification automations
+automation:
+  # Daily morning orchard briefing
+  - id: orchard_care_morning_briefing
+    alias: "Orchard Care - Morning Briefing"
+    description: "Daily summary of orchard care tasks"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    condition:
+      - condition: template
+        value_template: >
+          {% set today = now().strftime('%Y-%m-%d') %}
+          {% set events = state_attr('calendar.orchard_care_all_plants', 'events') %}
+          {{ events | selectattr('start', 'match', today) | list | length > 0 }}
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌳 Today's Orchard Tasks"
+          message: >
+            {% set today = now().strftime('%Y-%m-%d') %}
+            {% set events = state_attr('calendar.orchard_care_all_plants', 'events') %}
+            {% set today_events = events | selectattr('start', 'match', today) | list %}
+            {% for event in today_events %}
+            • {{ event.summary }}
+            {% endfor %}
+          data:
+            actions:
+              - action: "VIEW_CALENDAR"
+                title: "View Details"
+
+  # Weather-aware spray notifications
+  - id: orchard_care_weather_spray_check
+    alias: "Orchard Care - Weather Check for Spraying"
+    description: "Check weather conditions for spray treatments"
+    trigger:
+      - platform: calendar
+        event: start
+        entity_id:
+          - calendar.apple_tree_care_calendar
+          - calendar.pear_tree_care_calendar
+          - calendar.orchard_care_all_plants
+        offset: "-02:00:00"  # 2 hours before
+    condition:
+      - condition: template
+        value_template: "{{ 'Spray' in trigger.calendar_event.summary }}"
+    action:
+      - service: weather.get_forecast
+        target:
+          entity_id: weather.forecast
+        data:
+          type: hourly
+        response_variable: weather_forecast
+      - choose:
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: numeric_state
+                    entity_id: weather.forecast
+                    attribute: wind_speed
+                    below: 15
+                  - condition: template
+                    value_template: >
+                      {{ weather_forecast.forecast[0].precipitation | float == 0 }}
+            sequence:
+              - service: notify.family
+                data:
+                  title: "🌿 Perfect Spraying Weather!"
+                  message: >
+                    Great conditions for: {{ trigger.calendar_event.summary }}
+
+                    🌤️ Weather: {{ states('weather.forecast') }}
+                    💨 Wind: {{ state_attr('weather.forecast', 'wind_speed') }} mph
+                    🌧️ Rain chance: {{ weather_forecast.forecast[0].precipitation }}%
+
+                    Ideal time to proceed with treatment!
+                  data:
+                    actions:
+                      - action: "MARK_COMPLETE"
+                        title: "Mark as Done"
+        default:
+          - service: notify.family
+            data:
+              title: "⚠️ Check Weather for Spraying"
+              message: >
+                Weather may not be ideal for: {{ trigger.calendar_event.summary }}
+
+                💨 Wind: {{ state_attr('weather.forecast', 'wind_speed') }} mph
+                🌧️ Rain chance: {{ weather_forecast.forecast[0].precipitation }}%
+
+                Consider postponing until conditions improve.
+
+  # Preparation reminders (24 hours before)
+  - id: orchard_care_prep_reminder
+    alias: "Orchard Care - Preparation Reminder"
+    description: "Remind to prepare tools and materials"
+    trigger:
+      - platform: calendar
+        event: start
+        entity_id: calendar.orchard_care_all_plants
+        offset: "-1 00:00:00"  # 24 hours before
+    condition:
+      - condition: template
+        value_template: "{{ not trigger.calendar_event.summary.startswith('📅') }}"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "📋 Orchard Care Prep"
+          message: >
+            Tomorrow: {{ trigger.calendar_event.summary }}
+
+            ✅ Check your supplies:
+            {% if 'Prune' in trigger.calendar_event.summary %}
+            • Clean, sharp pruning tools
+            • Rubbing alcohol for sanitation
+            • Gloves and safety gear
+            • Wound sealant (if needed)
+            {% elif 'Spray' in trigger.calendar_event.summary %}
+            • Spray equipment and products
+            • Personal protective equipment
+            • Weather forecast check
+            • Beneficial insect inspection
+            {% endif %}
+          data:
+            actions:
+              - action: "PREP_CHECKLIST"
+                title: "View Checklist"
+
+  # Weekly planning summary
+  - id: orchard_care_weekly_summary
+    alias: "Orchard Care - Weekly Planning"
+    description: "Weekly summary of upcoming orchard tasks"
+    trigger:
+      - platform: time
+        at: "18:00:00"
+      - platform: time
+        weekday: sun
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌳 This Week in Your Orchard"
+          message: >
+            {% set start_date = now().strftime('%Y-%m-%d') %}
+            {% set events = state_attr('calendar.orchard_care_all_plants', 'events') %}
+            {% set week_events = events | selectattr('start', 'ge', start_date) |
+                                        selectattr('start', 'le', (now() + timedelta(days=7)).strftime('%Y-%m-%d')) |
+                                        list %}
+            {% if week_events | length > 0 %}
+            Upcoming tasks:
+            {% for event in week_events[:5] %}
+            • {{ event.start.strftime('%a %m/%d') }}: {{ event.summary }}
+            {% endfor %}
+            {% else %}
+            No major orchard tasks scheduled this week. Enjoy!
+            {% endif %}
+
+  # Seasonal transition reminders
+  - id: orchard_care_seasonal_reminder
+    alias: "Orchard Care - Seasonal Transition"
+    description: "Remind about seasonal care changes"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+      - platform: numeric_state
+        entity_id: sun.sun
+        attribute: elevation
+        above: 0
+    condition:
+      - condition: template
+        value_template: >
+          {% set today = now() %}
+          {% set seasonal_dates = [
+            today.replace(month=3, day=20),   # Spring equinox
+            today.replace(month=6, day=21),   # Summer solstice
+            today.replace(month=9, day=22),   # Fall equinox
+            today.replace(month=12, day=21)   # Winter solstice
+          ] %}
+          {{ today.date() in seasonal_dates | map(attribute='date') }}
+    action:
+      - service: notify.family
+        data:
+          title: "🍂 Seasonal Orchard Care Update"
+          message: >
+            {% set season = now().strftime('%B') %}
+            {% if now().month in [3, 4, 5] %}
+            Spring is here! Time for active pruning and pest prevention.
+            {% elif now().month in [6, 7, 8] %}
+            Summer care: Focus on watering, pest monitoring, and light pruning.
+            {% elif now().month in [9, 10, 11] %}
+            Fall preparation: Harvest, cleanup, and dormant season prep.
+            {% else %}
+            Winter dormancy: Perfect time for major pruning and planning.
+            {% endif %}
+
+            Check your orchard calendar for updated seasonal schedules.
+
+# Advanced automations for power users
+  # Smart postponement based on conditions
+  - id: orchard_care_smart_postpone
+    alias: "Orchard Care - Smart Task Postponement"
+    description: "Automatically suggest postponement for poor conditions"
+    trigger:
+      - platform: calendar
+        event: start
+        entity_id: calendar.orchard_care_all_plants
+    condition:
+      - condition: or
+        conditions:
+          - condition: and  # Bad weather for spraying
+            conditions:
+              - condition: template
+                value_template: "{{ 'Spray' in trigger.calendar_event.summary }}"
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity_id: weather.forecast
+                    attribute: wind_speed
+                    above: 15
+                  - condition: state
+                    entity_id: weather.forecast
+                    state: 'rainy'
+          - condition: and  # Freezing weather for pruning
+            conditions:
+              - condition: template
+                value_template: "{{ 'Prune' in trigger.calendar_event.summary }}"
+              - condition: numeric_state
+                entity_id: weather.forecast
+                attribute: temperature
+                below: 32
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "⏳ Consider Postponing Orchard Task"
+          message: >
+            Current conditions may not be ideal for: {{ trigger.calendar_event.summary }}
+
+            {% if 'Spray' in trigger.calendar_event.summary %}
+            🌪️ Wind: {{ state_attr('weather.forecast', 'wind_speed') }} mph (high)
+            🌧️ Weather: {{ states('weather.forecast') }}
+
+            Better to wait for calmer, drier conditions.
+            {% else %}
+            🥶 Temperature: {{ state_attr('weather.forecast', 'temperature') }}°F
+            ❄️ Risk of freezing damage to fresh cuts.
+
+            Wait for warmer weather above 35°F.
+            {% endif %}
+          data:
+            actions:
+              - action: "POSTPONE_1DAY"
+                title: "Postpone 1 Day"
+              - action: "POSTPONE_3DAY"
+                title: "Postpone 3 Days"
+              - action: "PROCEED_ANYWAY"
+                title: "Proceed Anyway"
+
+# Configuration for mobile app actionable notifications
+script:
+  # Handle postponement actions
+  orchard_care_postpone_task:
+    alias: "Postpone Orchard Care Task"
+    sequence:
+      - service: calendar.create_event
+        target:
+          entity_id: calendar.orchard_care_all_plants
+        data:
+          summary: "{{ summary }} (Postponed)"
+          start_date_time: "{{ (now() + timedelta(days=days|int)).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=days|int, hours=2)).isoformat() }}"
+          description: "Task postponed due to weather conditions"
+
+  # Mark task as complete
+  orchard_care_mark_complete:
+    alias: "Mark Orchard Care Task Complete"
+    sequence:
+      - service: logbook.log
+        data:
+          name: "Orchard Care"
+          message: "Completed: {{ summary }}"
+          entity_id: calendar.orchard_care_all_plants
+
+# Mobile app notification actions
+mobile_app:
+  - platform: notify
+    name: your_phone
+    actions:
+      - identifier: 'POSTPONE_1DAY'
+        title: 'Postpone 1 Day'
+        activationMode: 'background'
+      - identifier: 'POSTPONE_3DAY'
+        title: 'Postpone 3 Days'
+        activationMode: 'background'
+      - identifier: 'MARK_COMPLETE'
+        title: 'Mark Complete'
+        activationMode: 'background'
