@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.pylint",
+        "ms-python.black-formatter",
+        "keesschollaart.vscode-home-assistant",
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-json"
+    ]
+}

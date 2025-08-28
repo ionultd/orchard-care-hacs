@@ -1,0 +1,36 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Orchard Care Setup",
+                "description": "Configure your orchard care preferences and select the plants you want to track.",
+                "data": {
+                    "hemisphere": "Which hemisphere are you in?",
+                    "organic_preference": "Do you prefer organic treatments?",
+                    "selected_plants": "Select the plants in your orchard:",
+                    "custom_plants": "Add custom plants (comma-separated):"
+                },
+                "data_description": {
+                    "hemisphere": "This determines the seasonal timing for care schedules",
+                    "organic_preference": "Choose between organic and conventional spray recommendations",
+                    "selected_plants": "Pick from our database of common fruit trees and berries",
+                    "custom_plants": "Add any plants not in our list"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Update Orchard Care Settings",
+                "description": "Modify your orchard care configuration.",
+                "data": {
+                    "hemisphere": "Hemisphere",
+                    "organic_preference": "Organic preference",
+                    "selected_plants": "Selected plants",
+                    "custom_plants": "Custom plants"
+                }
+            }
+        }
+    }
+}

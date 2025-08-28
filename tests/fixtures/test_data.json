@@ -1,0 +1,9 @@
+{
+    "test_plants": {
+        "apple": {
+            "name": "Apple Tree",
+            "pruning_months": [12, 1, 2],
+            "spray_months": [3, 4, 5, 9]
+        }
+    }
+}

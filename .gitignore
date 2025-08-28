@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Home Assistant
+*.db
+*.log
+.HA_VERSION
+*.yaml.bak
+
+# Development
+.DS_Store
+*.swp
+*.tmp
+node_modules/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.sublime-*
+
+# Distribution
+*.zip
+dist/
+build/

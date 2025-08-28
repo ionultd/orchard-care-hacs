@@ -1,0 +1,30 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Orchard Care Setup",
+                "description": "Configure your orchard care preferences",
+                "data": {
+                    "hemisphere": "Seasonal Hemisphere",
+                    "organic_preference": "Prefer Organic Products",
+                    "selected_plants": "Select Your Plants",
+                    "custom_plants": "Custom Plants (comma-separated)"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Orchard Care Options",
+                "description": "Update your orchard care settings",
+                "data": {
+                    "hemisphere": "Seasonal Hemisphere",
+                    "organic_preference": "Prefer Organic Products",
+                    "selected_plants": "Select Your Plants",
+                    "custom_plants": "Custom Plants (comma-separated)"
+                }
+            }
+        }
+    }
+}
