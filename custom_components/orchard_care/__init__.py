@@ -1,10 +1,11 @@
 """The Orchard Care integration."""
 import logging
 from datetime import datetime, timedelta
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.const import Platform
 
 _LOGGER = logging.getLogger(__name__)
@@ -12,43 +13,83 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "orchard_care"
 PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 
-async def async_setup(hass: HomeAssistant, config: dict):
+# Type alias for better type hints in HA 2025.8
+type OrchardCareConfigEntry = ConfigEntry[OrchardCareCoordinator]
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the Orchard Care component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+
+async def async_setup_entry(hass: HomeAssistant, entry: OrchardCareConfigEntry) -> bool:
     """Set up Orchard Care from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = OrchardCareCoordinator(hass, entry)
 
+    coordinator = OrchardCareCoordinator(hass, entry)
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Initialize the coordinator
+    await coordinator.async_initialize()
+
+    # Use the new async_forward_entry_setups method (required in HA 2025.8)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+
+async def async_unload_entry(hass: HomeAssistant, entry: OrchardCareConfigEntry) -> bool:
     """Unload a config entry."""
+    # Use async_unload_platforms for HA 2025.8
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        # Clean up any coordinator resources
+        await coordinator.async_cleanup()
+
     return unload_ok
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: OrchardCareConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
+
 
 class OrchardCareCoordinator:
     """Coordinator for Orchard Care data."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize the coordinator."""
         self.hass = hass
         self.entry = entry
-        self._data = {}
+        self._data: dict[str, dict[str, Any]] = {}
         self._update_interval = timedelta(hours=1)
+        self._unsub_timer = None
+
+    async def async_initialize(self) -> None:
+        """Initialize the coordinator."""
+        # Calculate initial schedules
+        await self._calculate_care_schedules()
 
         # Start periodic updates
-        async_track_time_interval(hass, self._async_update, self._update_interval)
+        self._unsub_timer = async_track_time_interval(
+            self.hass, self._async_update, self._update_interval
+        )
 
-    async def _async_update(self, now):
+    async def async_cleanup(self) -> None:
+        """Clean up coordinator resources."""
+        if self._unsub_timer:
+            self._unsub_timer()
+            self._unsub_timer = None
+
+    async def _async_update(self, now: datetime) -> None:
         """Update orchard care data."""
         await self._calculate_care_schedules()
 
-    async def _calculate_care_schedules(self):
+    async def _calculate_care_schedules(self) -> None:
         """Calculate care schedules for all configured plants."""
         hemisphere = self.entry.data.get("hemisphere", "northern")
         organic_preference = self.entry.data.get("organic_preference", True)
@@ -57,9 +98,13 @@ class OrchardCareCoordinator:
         for plant in selected_plants:
             plant_data = PLANT_CARE_DATA.get(plant, {})
             if plant_data:
-                self._data[plant] = self._get_plant_schedule(plant_data, hemisphere, organic_preference)
+                self._data[plant] = self._get_plant_schedule(
+                    plant_data, hemisphere, organic_preference
+                )
 
-    def _get_plant_schedule(self, plant_data, hemisphere, organic_preference):
+    def _get_plant_schedule(
+        self, plant_data: dict[str, Any], hemisphere: str, organic_preference: bool
+    ) -> dict[str, Any]:
         """Get care schedule for a specific plant."""
         current_date = datetime.now()
 
@@ -87,8 +132,11 @@ class OrchardCareCoordinator:
             "care_notes": plant_data.get("care_notes", "")
         }
 
-    def _get_next_occurrence(self, months):
+    def _get_next_occurrence(self, months: list[int]) -> datetime | None:
         """Get the next occurrence date for given months."""
+        if not months:
+            return None
+
         current_date = datetime.now()
         current_month = current_date.month
         current_year = current_date.year
@@ -98,10 +146,8 @@ class OrchardCareCoordinator:
                 return datetime(current_year, month, 1)
 
         # If no month this year, return first month next year
-        if months:
-            return datetime(current_year + 1, min(months), 1)
+        return datetime(current_year + 1, min(months), 1)
 
-        return None
 
 # Plant care data with seasonal care schedules
 PLANT_CARE_DATA = {
@@ -157,17 +203,17 @@ PLANT_CARE_DATA = {
     },
     "apricot": {
         "name": "Apricot Tree",
-        "pruning_months": [12, 1, 2],  # Winter pruning during dormancy
-        "spray_months": [3, 4, 5, 6],  # Spring and early summer
+        "pruning_months": [12, 1, 2],
+        "spray_months": [3, 4, 5, 6],
         "spray_products": {
             "organic": ["Copper fungicide", "Neem oil", "Sulfur spray", "Horticultural oil", "Bacillus subtilis"],
             "conventional": ["Captan", "Imidacloprid", "Propiconazole", "Malathion", "Fungicide spray"]
         },
-        "care_notes": "Prune during dormancy to maintain shape and airflow. Susceptible to brown rot and bacterial canker. Thin fruit for better quality."
+        "care_notes": "Prune during dormancy to maintain shape and airflow. Susceptible to brown rot and bacterial canker."
     },
     "citrus_orange": {
         "name": "Orange Tree",
-        "pruning_months": [3, 4, 5],  # Late winter/early spring
+        "pruning_months": [3, 4, 5],
         "spray_months": [2, 3, 4, 8, 9],
         "spray_products": {
             "organic": ["Neem oil", "Horticultural oil", "Insecticidal soap", "Copper fungicide"],
@@ -227,7 +273,7 @@ PLANT_CARE_DATA = {
     },
     "strawberry": {
         "name": "Strawberry Plant",
-        "pruning_months": [11, 12, 1],  # Remove old leaves
+        "pruning_months": [11, 12, 1],
         "spray_months": [3, 4, 5, 9],
         "spray_products": {
             "organic": ["Neem oil", "Copper fungicide", "Bacillus subtilis"],
@@ -237,42 +283,42 @@ PLANT_CARE_DATA = {
     },
     "fig": {
         "name": "Fig Tree",
-        "pruning_months": [12, 1, 2, 3],  # Winter/early spring pruning
-        "spray_months": [3, 4, 5, 8, 9],  # Spring and late summer
+        "pruning_months": [12, 1, 2, 3],
+        "spray_months": [3, 4, 5, 8, 9],
         "spray_products": {
             "organic": ["Neem oil", "Copper fungicide", "Horticultural oil", "Insecticidal soap"],
             "conventional": ["Captan", "Imidacloprid", "Malathion", "Systemic fungicide"]
         },
-        "care_notes": "Minimal pruning needed. Remove suckers and dead wood. Watch for fig rust and scale insects."
+        "care_notes": "Minimal pruning needed. Remove suckers and dead wood."
     },
     "avocado": {
         "name": "Avocado Tree",
-        "pruning_months": [2, 3, 4],  # Late winter/early spring
-        "spray_months": [2, 3, 4, 5, 8, 9, 10],  # Multiple seasons for pest control
+        "pruning_months": [2, 3, 4],
+        "spray_months": [2, 3, 4, 5, 8, 9, 10],
         "spray_products": {
             "organic": ["Neem oil", "Horticultural oil", "Copper fungicide", "Bacillus thuringiensis", "Spinosad"],
             "conventional": ["Imidacloprid", "Abamectin", "Copper sulfate", "Systemic insecticide", "Fungicide spray"]
         },
-        "care_notes": "Light pruning only - remove dead branches and suckers. Sensitive to over-pruning. Watch for thrips, mites, and root rot."
+        "care_notes": "Light pruning only. Sensitive to over-pruning."
     },
     "kiwi": {
         "name": "Kiwi Vine",
-        "pruning_months": [6, 7, 8],  # Winter pruning (dormant season)
-        "spray_months": [9, 10, 11, 3, 4],  # Spring and early summer
+        "pruning_months": [6, 7, 8],
+        "spray_months": [9, 10, 11, 3, 4],
         "spray_products": {
             "organic": ["Copper fungicide", "Neem oil", "Horticultural oil", "Bacillus thuringiensis", "Spinosad"],
             "conventional": ["Captan", "Imidacloprid", "Mancozeb", "Systemic insecticide", "Fungicide spray"]
         },
-        "care_notes": "Heavy winter pruning required. Train on strong trellis system. Separate male and female plants needed. Watch for scale insects and bacterial canker."
+        "care_notes": "Heavy winter pruning required. Train on strong trellis system."
     },
     "persimmon": {
         "name": "Persimmon Tree",
-        "pruning_months": [12, 1, 2],  # Winter pruning during dormancy
-        "spray_months": [3, 4, 5, 8, 9],  # Spring and late summer
+        "pruning_months": [12, 1, 2],
+        "spray_months": [3, 4, 5, 8, 9],
         "spray_products": {
             "organic": ["Neem oil", "Copper fungicide", "Horticultural oil", "Bacillus subtilis", "Kaolin clay"],
             "conventional": ["Captan", "Imidacloprid", "Propiconazole", "Malathion", "Fungicide spray"]
         },
-        "care_notes": "Minimal pruning needed - persimmons fruit on new wood. Remove water sprouts and dead branches. Watch for persimmon psylla and scale insects."
+        "care_notes": "Minimal pruning needed - persimmons fruit on new wood."
     }
 }

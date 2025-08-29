@@ -1,7 +1,7 @@
 {
     "domain": "orchard_care",
     "name": "Orchard Care",
-    "codeowners": [],
+    "codeowners": ["@ionultd"],
     "config_flow": true,
     "dependencies": [],
     "documentation": "https://github.com/ionultd/orchard-care-hacs",
@@ -9,5 +9,6 @@
     "issue_tracker": "https://github.com/ionultd/orchard-care-hacs/issues",
     "requirements": [],
     "version": "1.0.0",
-    "integration_type": "service"
+    "integration_type": "service",
+    "homeassistant": "2025.8.0"
 }
