@@ -1,4 +1,4 @@
-# custom_components/orchard_care/calendar.py - FIXED VERSION - 29/8/2025
+# custom_components/orchard_care/calendar.py - FIXED VERSION
 """Calendar platform for Orchard Care integration with smart reminders."""
 from datetime import datetime, timedelta
 from typing import Optional, List, Any
@@ -39,7 +39,9 @@ class OrchardCareCalendar(CalendarEntity):
 
     # Set this to ensure calendar is enabled by default
     _attr_entity_registry_enabled_default = True
+    _attr_entity_registry_visible_default = True
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, coordinator: OrchardCareCoordinator, plant: str, config_entry: ConfigEntry):
         """Initialize the calendar."""
@@ -53,6 +55,7 @@ class OrchardCareCalendar(CalendarEntity):
         # Set entity attributes for better organization
         self._attr_unique_id = f"{DOMAIN}_{self.plant}_calendar"
         self._attr_name = "Care Calendar"  # Will be combined with device name
+        self._attr_available = True
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
@@ -376,7 +379,9 @@ class OrchardCareMasterCalendar(CalendarEntity):
 
     # Set this to ensure calendar is enabled by default
     _attr_entity_registry_enabled_default = True
+    _attr_entity_registry_visible_default = True
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, coordinator: OrchardCareCoordinator, config_entry: ConfigEntry):
         """Initialize the master calendar."""
@@ -387,6 +392,7 @@ class OrchardCareMasterCalendar(CalendarEntity):
         # Set entity attributes
         self._attr_unique_id = f"{DOMAIN}_master_calendar"
         self._attr_name = "Orchard Care - All Plants"
+        self._attr_available = True
 
     @property
     def unique_id(self):
