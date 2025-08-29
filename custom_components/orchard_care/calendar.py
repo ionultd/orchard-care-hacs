@@ -1,13 +1,15 @@
-# custom_components/orchard_care/calendar.py - ENHANCED VERSION
-"""Enhanced Calendar platform for Orchard Care integration with smart reminders."""
+# custom_components/orchard_care/calendar.py - FIXED VERSION - 29/8/2025
+"""Calendar platform for Orchard Care integration with smart reminders."""
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional, List, Any
+
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval, async_call_later
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.helpers.entity import EntityCategory
 
 from . import DOMAIN, OrchardCareCoordinator, PLANT_CARE_DATA
 
@@ -31,8 +33,13 @@ async def async_setup_entry(
 
     async_add_entities(entities)
 
+
 class OrchardCareCalendar(CalendarEntity):
     """Calendar entity for individual Orchard Care plants with smart reminders."""
+
+    # Set this to ensure calendar is enabled by default
+    _attr_entity_registry_enabled_default = True
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator: OrchardCareCoordinator, plant: str, config_entry: ConfigEntry):
         """Initialize the calendar."""
@@ -42,6 +49,10 @@ class OrchardCareCalendar(CalendarEntity):
         self.plant_data = PLANT_CARE_DATA.get(plant, {})
         self._upcoming_events = []
         self._last_reminder_dates = {}
+
+        # Set entity attributes for better organization
+        self._attr_unique_id = f"{DOMAIN}_{self.plant}_calendar"
+        self._attr_name = "Care Calendar"  # Will be combined with device name
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
@@ -63,12 +74,13 @@ class OrchardCareCalendar(CalendarEntity):
     @property
     def unique_id(self):
         """Return unique ID."""
-        return f"{DOMAIN}_{self.plant}_calendar"
+        return self._attr_unique_id
 
     @property
     def name(self):
         """Return the name."""
-        return f"{self.plant_data.get('name', self.plant.title())} Care Calendar"
+        # When _attr_has_entity_name is True, this becomes part of the entity name
+        return self._attr_name
 
     @property
     def device_info(self):
@@ -78,10 +90,11 @@ class OrchardCareCalendar(CalendarEntity):
             "name": self.plant_data.get("name", self.plant.title()),
             "manufacturer": "Orchard Care",
             "model": "Fruit Tree/Berry Care",
+            "sw_version": "1.0.0",
         }
 
     @property
-    def event(self):
+    def event(self) -> CalendarEvent | None:
         """Return the current or next event."""
         now = datetime.now()
         events = self._get_events(now, now + timedelta(days=7))
@@ -91,14 +104,22 @@ class OrchardCareCalendar(CalendarEntity):
             return min(events, key=lambda x: abs((x.start - now).total_seconds()))
         return None
 
-    def get_events(self, hass, start_date, end_date):
+    async def async_get_events(
+        self, hass: HomeAssistant, start_date: datetime, end_date: datetime
+    ) -> list[CalendarEvent]:
         """Get all events in a specific time range."""
         return self._get_events(start_date, end_date)
 
-    def _get_events(self, start_date, end_date):
+    def _get_events(self, start_date: datetime, end_date: datetime) -> list[CalendarEvent]:
         """Generate care events for the specified date range with enhanced details."""
         events = []
+
+        # Get the current plant schedule from coordinator
         plant_schedule = self.coordinator._data.get(self.plant, {})
+
+        if not plant_schedule:
+            # If no schedule data yet, return empty list
+            return events
 
         # Generate pruning events with reminders
         pruning_months = plant_schedule.get("pruning_months", [])
@@ -106,59 +127,93 @@ class OrchardCareCalendar(CalendarEntity):
 
         # Generate spray events with weather considerations
         spray_months = plant_schedule.get("spray_months", [])
-        self._generate_spray_events(events, spray_months, start_date, end_date)
+        spray_products = plant_schedule.get("spray_products", [])
+        self._generate_spray_events(events, spray_months, spray_products, start_date, end_date)
 
         # Generate reminder events (1 week and 3 days before)
         self._generate_reminder_events(events, start_date, end_date)
 
         return sorted(events, key=lambda x: x.start)
 
-    def _generate_pruning_events(self, events: List[CalendarEvent], pruning_months: List[int], start_date: datetime, end_date: datetime):
+    def _generate_pruning_events(
+        self,
+        events: List[CalendarEvent],
+        pruning_months: List[int],
+        start_date: datetime,
+        end_date: datetime
+    ) -> None:
         """Generate pruning events with detailed information."""
+        if not pruning_months:
+            return
+
         for year in range(start_date.year, end_date.year + 2):
             for month in pruning_months:
-                # Main pruning event (mid-month)
-                event_date = datetime(year, month, 15, 9, 0)  # 9 AM
-                if start_date <= event_date <= end_date:
-                    plant_name = self.plant_data.get('name', self.plant.title())
-                    care_notes = self.plant_data.get('care_notes', '')
+                try:
+                    # Main pruning event (mid-month)
+                    event_date = datetime(year, month, 15, 9, 0)  # 9 AM
+                    if start_date <= event_date <= end_date:
+                        plant_name = self.plant_data.get('name', self.plant.title())
+                        care_notes = self.plant_data.get('care_notes', '')
 
-                    # Enhanced description with tips
-                    description = self._get_pruning_description(plant_name, care_notes, month)
+                        # Enhanced description with tips
+                        description = self._get_pruning_description(plant_name, care_notes, month)
 
-                    events.append(CalendarEvent(
-                        start=event_date,
-                        end=event_date + timedelta(hours=3),
-                        summary=f"🌳 Prune {plant_name}",
-                        description=description,
-                        location="Orchard/Garden"
-                    ))
+                        events.append(CalendarEvent(
+                            start=event_date,
+                            end=event_date + timedelta(hours=3),
+                            summary=f"🌳 Prune {plant_name}",
+                            description=description,
+                            location="Orchard/Garden"
+                        ))
+                except ValueError:
+                    # Handle invalid date (e.g., month 13)
+                    continue
 
-    def _generate_spray_events(self, events: List[CalendarEvent], spray_months: List[int], start_date: datetime, end_date: datetime):
+    def _generate_spray_events(
+        self,
+        events: List[CalendarEvent],
+        spray_months: List[int],
+        spray_products: List[str],
+        start_date: datetime,
+        end_date: datetime
+    ) -> None:
         """Generate spray events with product recommendations."""
+        if not spray_months:
+            return
+
         organic_pref = self.config_entry.data.get("organic_preference", True)
-        spray_products = self.coordinator._data.get(self.plant, {}).get("spray_products", [])
 
         for year in range(start_date.year, end_date.year + 2):
             for month in spray_months:
-                # Spray event (first week of month, weather permitting)
-                event_date = datetime(year, month, 7, 7, 0)  # 7 AM (good spraying time)
-                if start_date <= event_date <= end_date:
-                    plant_name = self.plant_data.get('name', self.plant.title())
-                    spray_type = "Organic" if organic_pref else "Conventional"
+                try:
+                    # Spray event (first week of month, weather permitting)
+                    event_date = datetime(year, month, 7, 7, 0)  # 7 AM (good spraying time)
+                    if start_date <= event_date <= end_date:
+                        plant_name = self.plant_data.get('name', self.plant.title())
+                        spray_type = "Organic" if organic_pref else "Conventional"
 
-                    # Enhanced description with weather and product info
-                    description = self._get_spray_description(plant_name, spray_type, spray_products, month)
+                        # Enhanced description with weather and product info
+                        description = self._get_spray_description(
+                            plant_name, spray_type, spray_products, month
+                        )
 
-                    events.append(CalendarEvent(
-                        start=event_date,
-                        end=event_date + timedelta(hours=2),
-                        summary=f"🌿 Spray {plant_name} ({spray_type})",
-                        description=description,
-                        location="Orchard/Garden"
-                    ))
+                        events.append(CalendarEvent(
+                            start=event_date,
+                            end=event_date + timedelta(hours=2),
+                            summary=f"🌿 Spray {plant_name} ({spray_type})",
+                            description=description,
+                            location="Orchard/Garden"
+                        ))
+                except ValueError:
+                    # Handle invalid date
+                    continue
 
-    def _generate_reminder_events(self, events: List[CalendarEvent], start_date: datetime, end_date: datetime):
+    def _generate_reminder_events(
+        self,
+        events: List[CalendarEvent],
+        start_date: datetime,
+        end_date: datetime
+    ) -> None:
         """Generate reminder events for upcoming care tasks."""
         main_events = [e for e in events if not e.summary.startswith("📅")]
 
@@ -220,7 +275,13 @@ class OrchardCareCalendar(CalendarEntity):
 ⚠️ Safety: Wear gloves and eye protection. Be aware of power lines.
         """.strip()
 
-    def _get_spray_description(self, plant_name: str, spray_type: str, products: List[str], month: int) -> str:
+    def _get_spray_description(
+        self,
+        plant_name: str,
+        spray_type: str,
+        products: List[str],
+        month: int
+    ) -> str:
         """Get detailed spray description with weather and product info."""
         weather_conditions = """
 🌤️ IDEAL CONDITIONS:
@@ -309,8 +370,13 @@ class OrchardCareCalendar(CalendarEntity):
             },
         )
 
+
 class OrchardCareMasterCalendar(CalendarEntity):
     """Master calendar combining all orchard care plants."""
+
+    # Set this to ensure calendar is enabled by default
+    _attr_entity_registry_enabled_default = True
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator: OrchardCareCoordinator, config_entry: ConfigEntry):
         """Initialize the master calendar."""
@@ -318,18 +384,33 @@ class OrchardCareMasterCalendar(CalendarEntity):
         self.config_entry = config_entry
         self.selected_plants = config_entry.data.get("selected_plants", [])
 
+        # Set entity attributes
+        self._attr_unique_id = f"{DOMAIN}_master_calendar"
+        self._attr_name = "Orchard Care - All Plants"
+
     @property
     def unique_id(self):
         """Return unique ID."""
-        return f"{DOMAIN}_master_calendar"
+        return self._attr_unique_id
 
     @property
     def name(self):
         """Return the name."""
-        return "Orchard Care - All Plants"
+        return self._attr_name
 
     @property
-    def event(self):
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, "master")},
+            "name": "Orchard Care Master",
+            "manufacturer": "Orchard Care",
+            "model": "All Plants Combined",
+            "sw_version": "1.0.0",
+        }
+
+    @property
+    def event(self) -> CalendarEvent | None:
         """Return the most urgent event across all plants."""
         now = datetime.now()
         all_events = []
@@ -343,7 +424,9 @@ class OrchardCareMasterCalendar(CalendarEntity):
             return min(all_events, key=lambda x: abs((x.start - now).total_seconds()))
         return None
 
-    def get_events(self, hass, start_date, end_date):
+    async def async_get_events(
+        self, hass: HomeAssistant, start_date: datetime, end_date: datetime
+    ) -> list[CalendarEvent]:
         """Get all events from all plants."""
         all_events = []
 
@@ -353,68 +436,3 @@ class OrchardCareMasterCalendar(CalendarEntity):
             all_events.extend(events)
 
         return sorted(all_events, key=lambda x: x.start)
-
-# Additional automation helper for advanced users
-ORCHARD_CARE_AUTOMATIONS = """
-# Example automations to add to your configuration.yaml
-
-automation:
-  # Morning care reminder
-  - alias: "Orchard Care - Morning Briefing"
-    trigger:
-      - platform: time
-        at: "07:00:00"
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "🌳 Daily Orchard Update"
-          message: >
-            {% set events = state_attr('calendar.orchard_care_all_plants', 'events') %}
-            {% if events %}
-              Today's tasks: {{ events[0].summary }}
-            {% else %}
-              No orchard tasks scheduled for today.
-            {% endif %}
-
-  # Weather-aware spray reminder
-  - alias: "Orchard Care - Weather Check for Spraying"
-    trigger:
-      - platform: calendar
-        event: start
-        entity_id: calendar.orchard_care_all_plants
-    condition:
-      - condition: template
-        value_template: "{{ 'Spray' in trigger.calendar_event.summary }}"
-      - condition: numeric_state
-        entity_id: weather.forecast
-        attribute: wind_speed
-        below: 15
-      - condition: state
-        entity_id: weather.forecast
-        state:
-          - 'sunny'
-          - 'partlycloudy'
-    action:
-      - service: notify.family
-        data:
-          title: "🌿 Perfect Spraying Conditions!"
-          message: >
-            Weather is ideal for: {{ trigger.calendar_event.summary }}
-            Wind: {{ states.weather.forecast.attributes.wind_speed }} mph
-            Conditions: {{ states.weather.forecast.state }}
-
-  # Preparation reminder
-  - alias: "Orchard Care - Prep Reminder"
-    trigger:
-      - platform: calendar
-        event: start
-        entity_id: calendar.orchard_care_all_plants
-        offset: "-24:00:00"
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "📋 Orchard Care Prep"
-          message: >
-            Tomorrow: {{ trigger.calendar_event.summary }}
-            Time to check tools and supplies!
-"""
