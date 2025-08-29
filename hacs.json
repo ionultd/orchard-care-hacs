@@ -1,9 +1,6 @@
 {
     "name": "Orchard Care",
-    "hacs": "1.6.0",
     "domains": ["sensor", "calendar"],
     "homeassistant": "2025.8.0",
-    "render_readme": true,
-    "zip_release": true,
-    "filename": "orchard-care.zip"
+    "render_readme": true
 }
